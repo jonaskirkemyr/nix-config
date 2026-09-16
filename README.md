@@ -121,6 +121,26 @@ The rule: **Nix owns configuration and non-graphical CLI tools; the image owns b
 | VS Code | image (`dnf`, Microsoft repo) | RPM rather than Flatpak so it can see the Nix store and a project's direnv environment |
 | `lazygit`, `vim-full` | here | not in Fedora's repos (Fedora has `vim-enhanced`, not `vim-full`) |
 | `direnv` | here | it is the entry point to layer 3, and Home Manager wires `nix-direnv` caching in for free |
+| KDE panel, widgets, clock format | here (`home/plasma.nix`, via plasma-manager) | it is all `~/.config/plasma*` — per-user config, same category as `kitty.conf` |
+| wallpaper, virtual desktop count | here (`home/plasma.nix`) | per-user too; the image has no user session to apply them to |
+| a third-party KDE widget (plasmoid) | here, in `home.packages` | plasma-manager *configures* widgets, it does not install them; `programs.plasma.extraWidgets` was removed in favour of `home.packages` |
+| SDDM login screen, system `LC_TIME` | image | needs root, so out of scope for a Home Manager module by design |
+
+### KDE Plasma
+
+`home/plasma.nix` owns the panel, the virtual desktop count and the wallpaper. Three things to know before editing it:
+
+- **It is authoritative over panels.** The generated login script starts with `panels().forEach((panel) => panel.remove())` and deletes `~/.config/plasma-org.kde.plasma.desktop-appletsrc` before rebuilding them. Any panel you dragged into place by hand and did not write down here is gone after the next login. Desktop containments *survive* that deletion even though the same file holds them: the script runs with plasmashell already up (`X-KDE-autostart-condition=ksmserver`), so plasmashell re-serialises the desktops from memory. Wallpaper and desktop widgets only change if something in `plasma.nix` names them.
+- **The wallpaper applies to every screen.** `workspace.wallpaperPictureOfTheDay` loops over all desktops, so a multi-monitor setup gets the same wallpaper on each — there is no per-screen option.
+- **Most of it applies at login, not on switch.** `panels`, `workspace` and `desktop` are written into a script that plasmashell runs at the next login. Raw ini keys under `configFile` land during `home-manager switch`, but the apps that read them (KWin, for the desktop count) only do so at startup. So: log out and back in.
+
+To capture settings you have already tuned by hand instead of transcribing them:
+
+```bash
+nix run github:nix-community/plasma-manager   # rc2nix, dumps current Plasma config as Nix
+```
+
+Its output uses raw config keys rather than the high-level modules, so treat it as a starting point rather than a drop-in.
 
 ### Notes on the migration from the old config
 

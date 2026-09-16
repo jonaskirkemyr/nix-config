@@ -7,9 +7,16 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     # nixGL removed: GUI apps (kitty, IDEs) now come from the OS image / Flatpak,
     # so nothing built by Nix needs to find the system's GL drivers.
+
+    # KDE Plasma settings as Nix. Has no release branches — `trunk` is the Plasma
+    # 6 branch — so it follows our pinned nixpkgs and home-manager rather than
+    # dragging in a second copy of each. flake.lock pins the revision as usual.
+    plasma-manager.url = "github:nix-community/plasma-manager";
+    plasma-manager.inputs.nixpkgs.follows = "nixpkgs";
+    plasma-manager.inputs.home-manager.follows = "home-manager";
   };
 
-  outputs = { nixpkgs, home-manager, ... }:
+  outputs = { nixpkgs, home-manager, plasma-manager, ... }:
     let
       system = "x86_64-linux";
 
@@ -35,7 +42,11 @@
 
       mkHome = username: home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
-        modules = [ ./home/home.nix ];
+        modules = [
+          plasma-manager.homeModules.plasma-manager
+          ./home/home.nix
+          ./home/plasma.nix
+        ];
         extraSpecialArgs = { inherit username; };
       };
     in
