@@ -6,27 +6,37 @@ This is **layer 2** of a four-layer setup. It deliberately does *not* manage the
 
 | Layer | What | Managed by |
 |---|---|---|
-| 1. System | kernel, KDE, RPMs, Flatpaks, `/etc` | the `bluebuild` repo's `recipes/recipe.yml` |
+| 1. System | kernel, KDE, RPMs, Flatpaks, `/etc`, Nix itself | the `bluebuild` repo's `recipes/recipe.yml` |
 | **2. User config** | **`.zshrc`, prompt, git config, `kitty.conf`, CLI tools** | **this repo** |
 | 3. Per-project tools | "Node 18 here, Node 24 there" | a `flake.nix` + `.envrc` per project |
 | 4. Data | `/home`, databases | a real backup tool |
 
 ## Prerequisites
 
-Nix, installed with the Determinate Systems installer (it handles ostree/bootc and SELinux, which the upstream installer does not):
+Nix, with flakes enabled.
+
+**On my BlueBuild image, nothing to do** — Nix is part of layer 1, installed from Fedora's `nix` and `nix-daemon` RPMs, with flakes already on in `/etc/nix/nix.conf`. `ujust check-nix` confirms it. On an atomic host `/nix` has to be a separate writable mount, which is a system concern, so the image owns it; see that repo's `docs/SETUP.md`.
+
+**On plain Fedora**, the same packages work:
 
 ```bash
-curl -fsSL https://install.determinate.systems/nix | sh -s -- install
+sudo dnf install nix nix-daemon
+sudo systemctl enable --now nix-daemon
+sudo usermod -aG nixbld "$USER"     # then log out and back in
 ```
 
-Log out and back in so the profile script is sourced. Flakes are on by default.
+**Anywhere else**, use whatever installer that platform prefers — the [Determinate Systems installer](https://install.determinate.systems) is the usual answer — and enable flakes:
+
+```bash
+mkdir -p ~/.config/nix
+echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf
+```
 
 ## Usage
 
 On a machine running my BlueBuild image, all of this is wrapped:
 
 ```bash
-ujust setup-nix              # then log out and back in
 ujust setup-home-manager     # clones this repo to ~/nix-config and switches
 ujust update-home-manager    # pull + re-apply, day to day
 ```
