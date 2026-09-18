@@ -31,6 +31,26 @@
 # In practice: log out and back in after editing this file. The readers matter as
 # much as the writers — kwin, kglobalaccel and plasmashell all load their config
 # once, at session start.
+#
+# That login script has one system dependency, and it is easy to miss. Every
+# desktop script plasma-manager generates is applied by a single line in its
+# modules/startup.nix:
+#
+#   qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript ...
+#
+# unqualified, because on NixOS `qdbus` is on PATH. Fedora names it `qdbus-qt6`
+# (so Qt5's can coexist) and ships nothing called plain `qdbus`, so there the
+# script dies with "command not found" — and quietly: it wraps the call in
+# `trap 'success=0' ERR` and only writes its
+# ~/.local/share/plasma-manager/last_run_* marker on success, so it fails and
+# retries at every login, forever. Meanwhile `configFile` and `shortcuts` keep
+# landing, which makes it look like this file is being applied while the panel and
+# the wallpaper are still whatever KDE's defaults are.
+#
+# The OS image links /usr/bin/qdbus -> qdbus-qt6 for this (its
+# files/scripts/qdbus-compat.sh). On any other distro, check `command -v qdbus`
+# before concluding that something below is wrong, and run
+# ~/.local/share/plasma-manager/run_all.sh by hand to watch it happen.
 
 {
   programs.plasma = {

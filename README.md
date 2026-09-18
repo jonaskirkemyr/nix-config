@@ -140,7 +140,9 @@ The rule: **Nix owns configuration and non-graphical CLI tools; the image owns b
 
 ### KDE Plasma
 
-`home/plasma.nix` owns the panel, the virtual desktop count, the wallpaper and the default terminal. Four things to know before editing it:
+`home/plasma.nix` owns the panel, the virtual desktop count, the wallpaper and the default terminal. Five things to know before editing it:
+
+- **It needs `qdbus` on `PATH`, or none of it applies.** plasma-manager runs every panel/wallpaper/desktop change through `qdbus … org.kde.PlasmaShell.evaluateScript` at login. Fedora ships that binary as `qdbus-qt6` only, so the scripts fail with "command not found", and they fail *silently* — they trap the error and re-try at the next login, while the raw-ini half of the config (terminal, locale, virtual desktops) lands normally and makes everything look fine. My image links `/usr/bin/qdbus` for this; anywhere else, check `command -v qdbus` first.
 
 - **It is authoritative over panels.** The generated login script starts with `panels().forEach((panel) => panel.remove())` and deletes `~/.config/plasma-org.kde.plasma.desktop-appletsrc` before rebuilding them. Any panel you dragged into place by hand and did not write down here is gone after the next login. Desktop containments *survive* that deletion even though the same file holds them: the script runs with plasmashell already up (`X-KDE-autostart-condition=ksmserver`), so plasmashell re-serialises the desktops from memory. Wallpaper and desktop widgets only change if something in `plasma.nix` names them.
 - **The wallpaper applies to every screen.** `workspace.wallpaperPictureOfTheDay` loops over all desktops, so a multi-monitor setup gets the same wallpaper on each — there is no per-screen option.
