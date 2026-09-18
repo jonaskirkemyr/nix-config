@@ -8,7 +8,7 @@ This is **layer 2** of a four-layer setup. It deliberately does *not* manage the
 |---|---|---|
 | 1. System | kernel, KDE, RPMs, Flatpaks, `/etc`, Nix itself | the `bluebuild` repo's `recipes/recipe.yml` |
 | **2. User config** | **`.zshrc`, prompt, git config, `kitty.conf`, CLI tools** | **this repo** |
-| 3. Per-project tools | "Node 18 here, Node 24 there" | a `flake.nix` + `.envrc` per project |
+| 3. Per-project tools | "Node 18 here, Node 24 there" | a `flake.nix` + `.envrc` per project — started from [`templates/`](templates) here |
 | 4. Data | `/home`, databases | a real backup tool |
 
 ## Prerequisites
@@ -132,6 +132,7 @@ The rule: **Nix owns configuration and non-graphical CLI tools; the image owns b
 | VS Code | image (`dnf`, Microsoft repo) | RPM rather than Flatpak so it can see the Nix store and a project's direnv environment |
 | `lazygit`, `vim-full` | here | not in Fedora's repos (Fedora has `vim-enhanced`, not `vim-full`) |
 | `direnv` | here | it is the entry point to layer 3, and Home Manager wires `nix-direnv` caching in for free |
+| dev-shell templates per language | here (`templates/`) | they change far more often than the image does, and `nix flake init -t` reads them straight out of this flake |
 | KDE panel, widgets, clock format | here (`home/plasma.nix`, via plasma-manager) | it is all `~/.config/plasma*` — per-user config, same category as `kitty.conf` |
 | wallpaper, virtual desktop count | here (`home/plasma.nix`) | per-user too; the image has no user session to apply them to |
 | a third-party KDE widget (plasmoid) | here, in `home.packages` | plasma-manager *configures* widgets, it does not install them; `programs.plasma.extraWidgets` was removed in favour of `home.packages` |
@@ -166,15 +167,35 @@ Changes from the previous standalone config, and why:
 
 ## Layer 3: per-project environments
 
-Not in this repo, by design. In each project:
+The environments themselves live in each project, as a `flake.nix` + `.envrc` — not here. The *starting points* are here, in [`templates/`](templates):
+
+| Template | What the shell has |
+|---|---|
+| `csharp` | `dotnet-sdk_10`, plus `DOTNET_ROOT` (the SDK's own setup hook doesn't set it) |
+| `java` | `jdk21`, `maven`, `gradle` |
+| `kotlin` | `jdk21`, `kotlin`, `gradle` |
+| `nodejs` | `nodejs_22`, `pnpm` |
+
+They're exposed as flake `templates`, so plain Nix is enough to use them:
 
 ```bash
-# .envrc, next to flake.nix
-use flake
+cd ~/git/some-project
+nix flake init -t ~/nix-config#kotlin
+direnv allow
 ```
 
+On my BlueBuild image that's wrapped, and the wrapper also does the parts that are easy to forget — staging both files (Nix ignores untracked files in a git repo, which otherwise fails with a confusing "does not exist"), adding `.direnv/` to `.gitignore`, and `direnv allow`:
+
 ```bash
-direnv allow   # once; after that it activates on cd
+ujust create-flake kotlin      # no argument lists the templates
 ```
+
+Three deliberate choices inside the templates:
+
+- **One input, no `flake-utils`.** It would be a second input to read in every `nix flake update` diff, to save the four lines of `genAttrs` that replace it.
+- **The url is a branch, not a revision.** The project's own `flake.lock` is what pins the toolchain, so two projects created the same day drift independently from then on. `nix flake update` in the project moves it forward.
+- **No `JAVA_HOME`.** openjdk ships a setup hook that exports it (`$out/lib/openjdk`) whenever the shell hasn't already, so setting it in the template would just be a second place to keep in sync. Contrast `DOTNET_ROOT`, which dotnet's hook genuinely doesn't set.
+
+They live in this repo rather than in the image because a template is the sort of thing you tweak the week after writing it: a change here is a `git pull`, a change in the image is a CI build, an `ujust update` and a reboot.
 
 `direnv` and `nix-direnv` are configured here, and the direnv hook is in the zsh config, so this works out of the box.

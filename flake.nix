@@ -49,8 +49,31 @@
         ];
         extraSpecialArgs = { inherit username; };
       };
+      # Layer 3 starter kits: a devShell flake plus a .envrc, per language.
+      #
+      # `nix flake init -t <flake>#<name>` copies a template's directory into the
+      # current one, so these are plain files — nothing evaluates them from here,
+      # which is why they can pin their own nixpkgs branch and know nothing about
+      # this flake. `ujust create-flake <language>` is a wrapper around that one
+      # command; see files/justfiles/nix.just in the image repo.
+      #
+      # They live in this repo rather than in the OS image on purpose: a template
+      # is the sort of thing you tweak the week after writing it, and an image
+      # change costs a CI build, an `ujust update` and a reboot, while this costs
+      # a `git pull`.
+      mkTemplate = name: description: {
+        inherit description;
+        path = ./templates/${name};
+      };
     in
     {
       homeConfigurations = nixpkgs.lib.genAttrs users mkHome;
+
+      templates = {
+        csharp = mkTemplate "csharp" "C# / .NET dev shell (dotnet-sdk)";
+        java = mkTemplate "java" "Java dev shell (JDK, Maven, Gradle)";
+        kotlin = mkTemplate "kotlin" "Kotlin dev shell (JDK, kotlinc, Gradle)";
+        nodejs = mkTemplate "nodejs" "Node.js dev shell (node, npm, pnpm)";
+      };
     };
 }
