@@ -125,6 +125,7 @@ The rule: **Nix owns configuration and non-graphical CLI tools; the image owns b
 | `starship` | here | pure config + a small static binary; no reason to carry a COPR for it |
 | `kitty` binary | image (`dnf`) | needs the system GL drivers — this is what nixGL used to work around |
 | `kitty.conf` (theme, keybinds) | here | `programs.kitty.package = null` writes config only |
+| which terminal KDE opens (`Ctrl+Alt+T`, Dolphin's "Open Terminal") | here (`home/plasma.nix`) | two keys in `kdeglobals` and one global shortcut — all per-user |
 | Inconsolata Nerd Font | image (`fonts` module) | fontconfig should see it system-wide, including for non-Nix apps |
 | `git` + config | here | git itself is small; the config is the point |
 | IntelliJ IDEA | image (Flatpak) | large GUI app, wants its own sandbox and GL |
@@ -138,11 +139,12 @@ The rule: **Nix owns configuration and non-graphical CLI tools; the image owns b
 
 ### KDE Plasma
 
-`home/plasma.nix` owns the panel, the virtual desktop count and the wallpaper. Three things to know before editing it:
+`home/plasma.nix` owns the panel, the virtual desktop count, the wallpaper and the default terminal. Four things to know before editing it:
 
 - **It is authoritative over panels.** The generated login script starts with `panels().forEach((panel) => panel.remove())` and deletes `~/.config/plasma-org.kde.plasma.desktop-appletsrc` before rebuilding them. Any panel you dragged into place by hand and did not write down here is gone after the next login. Desktop containments *survive* that deletion even though the same file holds them: the script runs with plasmashell already up (`X-KDE-autostart-condition=ksmserver`), so plasmashell re-serialises the desktops from memory. Wallpaper and desktop widgets only change if something in `plasma.nix` names them.
 - **The wallpaper applies to every screen.** `workspace.wallpaperPictureOfTheDay` loops over all desktops, so a multi-monitor setup gets the same wallpaper on each — there is no per-screen option.
 - **Most of it applies at login, not on switch.** `panels`, `workspace` and `desktop` are written into a script that plasmashell runs at the next login. Raw ini keys under `configFile` land during `home-manager switch`, but the apps that read them (KWin, for the desktop count) only do so at startup. So: log out and back in.
+- **The application menu's pinned apps are a special case.** Kickoff keeps them as KActivities resource links in kactivitymanagerd's sqlite database, not in an ini file, and scopes them to the applet's instance id — so unpinning by hand does not survive the next login, because the rebuilt panel's new applet re-seeds them from the applet's own `favorites` default. `plasma.nix` sets that default to empty instead, which means the pinned page stays empty and anything you pin from the menu lasts only until you log out. Use `iconTasks.launchers` for a permanent launcher.
 
 To capture settings you have already tuned by hand instead of transcribing them:
 

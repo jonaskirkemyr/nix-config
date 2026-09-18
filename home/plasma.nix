@@ -1,7 +1,7 @@
 { ... }:
 
-# KDE Plasma desktop: panel geometry, widget order, the clock, virtual desktops
-# and the wallpaper.
+# KDE Plasma desktop: panel geometry, widget order, the clock, virtual desktops,
+# the wallpaper, the default terminal and the global shortcuts that go with it.
 #
 # This is the declarative version of what used to be dragged around by hand. It
 # was transcribed from a working session — `~/.config/plasmashellrc` for the
@@ -27,8 +27,10 @@
 # Two different apply times, which is worth knowing when a change seems not to
 # take:
 #   - `panels`, `workspace` (wallpaper), `desktop`  -> a script run at login
-#   - `configFile` (raw ini keys)                   -> `home-manager switch`
-# In practice: log out and back in after editing this file.
+#   - `configFile` (raw ini keys), `shortcuts`      -> `home-manager switch`
+# In practice: log out and back in after editing this file. The readers matter as
+# much as the writers — kwin, kglobalaccel and plasmashell all load their config
+# once, at session start.
 
 {
   programs.plasma = {
@@ -57,7 +59,42 @@
       # order is significant — it is AppletOrder in the generated file
       widgets = [
         {
-          kickoff.icon = "start-here"; # the Fedora logo, not the default K
+          kickoff = {
+            icon = "start-here"; # the Fedora logo, not the default K
+
+            # Nothing pinned in the application menu.
+            #
+            # Kickoff does not keep its favourites in an ini file — they are
+            # KActivities resource links in kactivitymanagerd's sqlite db under
+            # ~/.local/share, scoped to a client id that embeds the applet's
+            # instance number ("org.kde.plasma.kickoff.favorites.instance-<id>",
+            # from main.qml's Component.onCompleted). Which is why unpinning them
+            # by hand does not stick *here*: this file rebuilds the panel at every
+            # login, the fresh kickoff applet gets a new instance id and so an
+            # empty favourites model, and the applet then seeds it from its own
+            # config:
+            #
+            #   if (!configuration.favoritesPortedToKAstats) {
+            #       if (favoritesModel.count < 1) {
+            #           favoritesModel.portOldFavorites(configuration.favorites);
+            #       }
+            #       configuration.favoritesPortedToKAstats = true;
+            #   }
+            #
+            # `favorites` defaults to preferred://browser, kontact, systemsettings,
+            # dolphin and discover — exactly the list that keeps coming back. So
+            # seed from an empty list, and set the ported flag so the seeding is
+            # skipped outright. (There is no plasma-manager option for this;
+            # `settings` is the module's raw-key escape hatch, and these land in
+            # the applet's own Configuration/General group.)
+            #
+            # Trade-off: pinning from the menu still works, but only until the next
+            # login. For something permanent use `iconTasks.launchers` below.
+            settings.General = {
+              favorites = "";
+              favoritesPortedToKAstats = true;
+            };
+          };
         }
         {
           iconTasks.launchers = [ ]; # nothing pinned; task manager only
@@ -106,7 +143,43 @@
       wallpaperFillMode = "preserveAspectCrop";
     };
 
+    # Ctrl+Alt+T, moved to kitty. This is *not* covered by the TerminalApplication
+    # key below: that shortcut is registered against konsole's desktop file itself
+    # (`X-KDE-Shortcuts=Ctrl+Alt+T` in org.kde.konsole.desktop, mirrored into
+    # /usr/share/kglobalaccel/), so kglobalaccel keeps launching konsole no matter
+    # what the component chooser says. The binding has to be moved, not redirected:
+    # the empty list writes `_launch=none`, which is how KDE records "unbound".
+    #
+    # The `/` in the group names becomes kglobalshortcutsrc's nested-group syntax,
+    # i.e. [services][kitty.desktop] — plasma-manager writes these through
+    # configFile."kglobalshortcutsrc", so don't also set that file by hand.
+    shortcuts = {
+      "services/org.kde.konsole.desktop"._launch = [ ];
+      "services/kitty.desktop"._launch = "Ctrl+Alt+T";
+    };
+
     configFile = {
+      # Default terminal: kitty, which the OS image installs as an RPM so it sees
+      # the system GL drivers. plasma-manager has no module for this, so these are
+      # raw keys; they are declared in plasma-workspace's
+      # kcms/componentchooser/terminal_settings.kcfg, in kdeglobals/[General], with
+      # defaults `konsole` and `org.kde.konsole.desktop`.
+      #
+      # Both are needed, because callers read different ones:
+      #   TerminalApplication — plasmashell and ktelnetservice6, as a command name
+      #   TerminalService     — a .desktop storage id. KTerminalLauncherJob (so
+      #                         Dolphin's "Open Terminal") prefers this one and
+      #                         only synthesises a service from the command when
+      #                         it is empty.
+      #
+      # KIO only knows how to pass a working directory to konsole (`--workdir`) and
+      # xterm, but it also sets the launched process's own cwd, so kitty still
+      # opens in the right folder with no flag of its own.
+      "kdeglobals".General = {
+        TerminalApplication = "kitty";
+        TerminalService = "kitty.desktop";
+      };
+
       # Region & Language -> Formats. Norwegian time and number conventions on an
       # otherwise English system: 24-hour clock, 16. sep. 2026, comma as the
       # decimal separator. The OS image sets the same LC_TIME in /etc/locale.conf
