@@ -66,15 +66,61 @@
       height = 48;
 
       # what "don't fill the whole screen" actually is: a custom length mode with
-      # explicit bounds, centred, and detached from the screen edge. The two
-      # lengths differ by 18px because they came from dragging the panel handles;
-      # set them equal for a panel that never resizes itself.
+      # explicit bounds, centred, and detached from the screen edge.
+      #
+      # These two are only the fallback, not the answer. Panel lengths are pixels
+      # — Plasma has no percentage — and Plasma stores them per screen
+      # *resolution*, in a config group named after it
+      # ([PlasmaViews][Panel 1][Horizontal1920]). So a number transcribed from a
+      # 1920-wide screen is wider than a 1366-wide laptop panel can be, the
+      # minimum wins, and the panel fills the whole width. `extraSettings` below
+      # recomputes both from the screen that is actually there.
+      #
+      # Equal, unlike the 1747/1765 they started as: those came from dragging the
+      # handles, and a range lets the panel resize itself with its contents.
       lengthMode = "custom";
-      minLength = 1747;
+      minLength = 1765;
       maxLength = 1765;
       alignment = "center";
       floating = true;
       hiding = "none";
+
+      # The panel width, as "92% of this screen, but never more than 1765px".
+      #
+      # Neither plasma-manager nor Plasma itself can express that, so compute it
+      # at the one moment the layout script runs — login. `extraSettings` is raw
+      # JS appended to the end of this panel's block in the generated layout.js,
+      # with the `panel` object and the scripting API's globals in scope, so it
+      # runs after the values above and overwrites them.
+      #
+      # 92% of 1920 is 1765, i.e. this reproduces the hand-dragged panel on the
+      # screen it was dragged on, and shrinks with anything smaller. The cap is
+      # what stops a 4K screen from getting a 3.5k-wide panel; drop the
+      # `Math.min` for a pure percentage, or raise the number to taste.
+      #
+      # screenGeometry() is Plasma's own (shell/scripting/appinterface.cpp) and
+      # returns a QRectF in logical pixels — the same units as the length. The
+      # try/catch is deliberate: an exception here would abort the rest of the
+      # layout script and leave a half-built panel, while falling through just
+      # leaves the static values above in place.
+      #
+      # This runs at login only, so changing resolution (docking, a new monitor)
+      # wants a re-login; until then Plasma reuses whatever it last stored for
+      # that geometry.
+      extraSettings = ''
+        try {
+            const geometry = screenGeometry(panel.screen >= 0 ? panel.screen : 0);
+            const vertical = panel.location === "left" || panel.location === "right";
+            const available = vertical ? geometry.height : geometry.width;
+            if (available > 0) {
+                const length = Math.min(Math.round(available * 0.92), 1765);
+                panel.minimumLength = length;
+                panel.maximumLength = length;
+            }
+        } catch (e) {
+            print("plasma-manager: keeping the static panel length: " + e);
+        }
+      '';
 
       # order is significant — it is AppletOrder in the generated file
       widgets = [
