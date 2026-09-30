@@ -158,7 +158,40 @@
     pinentry-tty
     lazygit # not in Fedora's repos
     bitwarden-cli # `bw`. The desktop app is a Flatpak in the image
+    ripgrep # rg
+    fd
+    jq
+    btop
   ];
+
+  # Ctrl-R fuzzy history, Ctrl-T fuzzy file picker, Alt-C fuzzy cd. fd makes the
+  # file picker respect .gitignore
+  programs.fzf = {
+    enable = true;
+    defaultCommand = "fd --type f --hidden --exclude .git";
+    fileWidgetCommand = "fd --type f --hidden --exclude .git";
+  };
+
+  # `z <part of a path>` jumps to the best match among directories you've been
+  # to. Replaces oh-my-zsh's `z` plugin, which defines the same command
+  programs.zoxide.enable = true;
+
+  programs.bat.enable = true;
+
+  # Integration off: it would alias `ls` itself, and redefine `ll` below
+  programs.eza = {
+    enable = true;
+    enableZshIntegration = false;
+  };
+
+  # Weekly: deletes Home Manager generations older than 30 days, then collects
+  # the store. The store is /var/lib/nix, the same partition as the OS images,
+  # so this is what keeps /var from filling up. Runs as a user timer
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
 
   programs.direnv = {
     enable = true;
@@ -184,12 +217,12 @@
 
     oh-my-zsh = {
       enable = true;
-      plugins = [ "npm" "nvm" "z" ];
+      plugins = [ "npm" "nvm" ]; # no "z": zoxide replaces it
       theme = "robbyrussell";
     };
 
     shellAliases = {
-      ll = "ls -lah";
+      ll = "eza -lah --git --group-directories-first";
     };
 
     # No direnv hook here: programs.direnv.enableZshIntegration (on by default)
