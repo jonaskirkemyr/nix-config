@@ -157,6 +157,7 @@
     gnupg
     pinentry-tty
     lazygit # not in Fedora's repos
+    bitwarden-cli # `bw`. The desktop app is a Flatpak in the image
   ];
 
   programs.direnv = {
