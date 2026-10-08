@@ -157,6 +157,19 @@
 
   programs.home-manager.enable = true;
 
+  # Clones intellij-config where the zsh `idea` function below expects it. Only
+  # when missing, so it never touches a checkout you have local changes in, and an
+  # offline switch just warns. The image's /usr/bin/git, not pkgs.git: it already
+  # trusts the system CA store, which a Nix-built git on Fedora does not reliably find.
+  home.activation.cloneIntellijConfig = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    dir="$HOME/git/jonask/intellij-config"
+    if [[ ! -d "$dir/.git" ]]; then
+      run mkdir -p "$HOME/git/jonask"
+      run /usr/bin/git clone https://github.com/jonaskirkemyr/intellij-config.git "$dir" \
+        || warnEcho "could not clone intellij-config; skipped"
+    fi
+  '';
+
   # Only things the OS image does NOT provide. Anything graphical, and anything
   # Fedora packages well, belongs in the image instead — see the README.
   home.packages = with pkgs; [
@@ -248,6 +261,12 @@
       export EDITOR=vi
       export PATH="$HOME/.local/bin:$PATH"
       export GPG_TTY=$(tty)
+
+      # `idea .` starts IntelliJ detached from the terminal. The function lives in
+      # the intellij-config repo; machines that haven't cloned it just skip this.
+      if [[ -r ~/git/jonask/intellij-config/shell/idea.zsh ]]; then
+        source ~/git/jonask/intellij-config/shell/idea.zsh
+      fi
     '';
   };
 
