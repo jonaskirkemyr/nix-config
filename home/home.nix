@@ -13,6 +13,12 @@
   # to fpath so the image's zsh completions still work.
   targets.genericLinux.enable = true;
 
+  # genericLinux turns this on by default and then nags at every switch to run
+  # `sudo non-nixos-gpu-setup`. That script links Nix-built GL/Vulkan drivers for
+  # Nix-built GUI apps, and there are none: GUI apps come from the OS image or
+  # Flatpak and use the system drivers.
+  targets.genericLinux.gpu.enable = false;
+
   home.sessionVariables = {
     DIRENV_LOG_FORMAT = ""; # Empty string disables logs
   };
