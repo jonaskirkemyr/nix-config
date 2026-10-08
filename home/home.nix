@@ -15,8 +15,9 @@
 
   # genericLinux turns this on by default and then nags at every switch to run
   # `sudo non-nixos-gpu-setup`. That script links Nix-built GL/Vulkan drivers for
-  # Nix-built GUI apps, and there are none: GUI apps come from the OS image or
-  # Flatpak and use the system drivers.
+  # Nix-built GUI apps. The only one is IntelliJ, which draws with Java2D rather
+  # than OpenGL; every other GUI app comes from the OS image or Flatpak and uses
+  # the system drivers.
   targets.genericLinux.gpu.enable = false;
 
   home.sessionVariables = {
@@ -159,6 +160,10 @@
   # Only things the OS image does NOT provide. Anything graphical, and anything
   # Fedora packages well, belongs in the image instead — see the README.
   home.packages = with pkgs; [
+    # The exception to "graphical belongs in the image": as a Flatpak it could not
+    # see the nix dev shells, direnv or the JDKs they provide.
+    jetbrains.idea
+    claude-code
     vim-full
     gnupg
     pinentry-tty
