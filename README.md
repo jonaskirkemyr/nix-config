@@ -44,7 +44,7 @@ ujust update-home-manager    # pull + re-apply, day to day
 Anywhere else, do it by hand. First time on a machine — bootstrap without having `home-manager` installed yet:
 
 ```bash
-nix run home-manager/release-25.11 -- switch --flake ".#$USER"
+nix run home-manager/release-26.05 -- switch --flake ".#$USER"
 ```
 
 Every time after that, `home-manager` is on your `PATH`:

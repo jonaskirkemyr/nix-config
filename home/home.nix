@@ -217,6 +217,11 @@
 
   programs.zsh = {
     enable = true;
+
+    # Keep ~/.zshrc where it is. Home Manager will move the default to
+    # ~/.config/zsh, and the image's login shell setup expects the old place.
+    dotDir = config.home.homeDirectory;
+
     # Note: Home Manager's zsh module writes the config but does NOT install
     # zsh. The binary comes from the image, which is also what /etc/passwd
     # points at (`sudo usermod -s /usr/bin/zsh $USER`).
