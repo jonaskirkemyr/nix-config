@@ -222,6 +222,17 @@
     shortcuts = {
       "services/org.kde.konsole.desktop"._launch = [ ];
       "services/kitty.desktop"._launch = "Ctrl+Alt+T";
+
+      # Switch between virtual desktops, with Ctrl+Alt as a second binding next to
+      # the Meta+Ctrl default (repeated, since a list replaces the whole entry).
+      kwin."Switch One Desktop to the Left" = [ "Ctrl+Alt+Left" "Meta+Ctrl+Left" ];
+      kwin."Switch One Desktop to the Right" = [ "Ctrl+Alt+Right" "Meta+Ctrl+Right" ];
+
+      # Move the active window to the adjacent virtual desktop. Ctrl+Alt+Shift is
+      # kept as a second binding next to KDE's Meta+Ctrl+Shift default; a list
+      # replaces the whole entry, so the default has to be repeated.
+      kwin."Window One Desktop to the Left" = [ "Ctrl+Alt+Shift+Left" "Meta+Ctrl+Shift+Left" ];
+      kwin."Window One Desktop to the Right" = [ "Ctrl+Alt+Shift+Right" "Meta+Ctrl+Shift+Right" ];
     };
 
     configFile = {
